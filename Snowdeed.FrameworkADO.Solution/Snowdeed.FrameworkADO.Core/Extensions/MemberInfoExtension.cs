@@ -35,7 +35,7 @@ namespace Snowdeed.FrameworkADO.Core.Extensions
                 case Int64:
                     return $"{property.Name} BIGINT NOT NULL";
                 case String:
-                    return $"{property.Name} NVARCHAR(max) NOT NULL,";
+                    return $"{property.Name} NVARCHAR(max),";
                 default:
                     throw new InvalidOperationException("PropertyInfo value is not valid");
             }
