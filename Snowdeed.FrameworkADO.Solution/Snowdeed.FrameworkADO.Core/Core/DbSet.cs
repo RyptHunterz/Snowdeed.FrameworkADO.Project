@@ -6,6 +6,7 @@ using System.Reflection;
 
 namespace Snowdeed.FrameworkADO.Core.Core
 {
+    using Snowdeed.FrameworkADO.Core.Attributes;
     using Snowdeed.FrameworkADO.Core.Interfaces;
 
     public class DbSet<T> : IDbSet<T> where T : class
@@ -62,25 +63,34 @@ namespace Snowdeed.FrameworkADO.Core.Core
 
                 foreach (PropertyInfo propertyInfo in propertyInfos)
                 {
-                    query += $"{propertyInfo.Name}";
+                    bool IdentityValue = Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute));
 
-                    if (!propertyInfo.Equals(propertyInfos.Last()))
+                    if (!IdentityValue)
                     {
-                        query += ",";
+                        query += $"{propertyInfo.Name}";
+
+                        if (!propertyInfo.Equals(propertyInfos.Last()))
+                        {
+                            query += ",";
+                        }
                     }
                 }
                 query += ") VALUES (";
-
 
                 IEnumerable<PropertyInfo> entityPropertyInfos = entity.GetType().GetProperties().Where(x => x.GetValue(entity, null) != null).ToList();
 
                 foreach (PropertyInfo propertyInfo in entityPropertyInfos)
                 {
-                    query += $"'{propertyInfo.GetValue(entity)}'";
+                    bool IdentityValue = Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute));
 
-                    if (!propertyInfo.Equals(entityPropertyInfos.Last()))
+                    if (!IdentityValue)
                     {
-                        query += ",";
+                        query += $"'{propertyInfo.GetValue(entity)}'";
+
+                        if (!propertyInfo.Equals(entityPropertyInfos.Last()))
+                        {
+                            query += ",";
+                        }
                     }
                 }
 

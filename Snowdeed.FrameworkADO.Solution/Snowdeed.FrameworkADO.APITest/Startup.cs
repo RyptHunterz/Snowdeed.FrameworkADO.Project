@@ -72,13 +72,13 @@ namespace Snowdeed.FrameworkADO.APITest
 
                 if (env.IsDevelopment())
                 {
-                    context.MovieGenre.Add(new MovieGenre() { ID = 1, Genre_Name = "Action", Create_At = DateTime.Now, Create_By = "Admin" });
-                    context.MovieGenre.Add(new MovieGenre() { ID = 2, Genre_Name = "Aventure", Create_At = DateTime.Now, Create_By = "Admin" });
-                    context.MovieGenre.Add(new MovieGenre() { ID = 3, Genre_Name = "Comédie", Create_At = DateTime.Now, Create_By = "Admin" });
-                    context.MovieGenre.Add(new MovieGenre() { ID = 4, Genre_Name = "Documentaire", Create_At = DateTime.Now, Create_By = "Admin" });
-                    context.MovieGenre.Add(new MovieGenre() { ID = 5, Genre_Name = "Drame", Create_At = DateTime.Now, Create_By = "Admin" });
-                    context.MovieGenre.Add(new MovieGenre() { ID = 6, Genre_Name = "Fantastique", Create_At = DateTime.Now, Create_By = "Admin" });
-                    context.MovieGenre.Add(new MovieGenre() { ID = 7, Genre_Name = "Science-fiction", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Action", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Aventure", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Comédie", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Documentaire", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Drame", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Fantastique", Create_At = DateTime.Now, Create_By = "Admin" });
+                    context.MovieGenre.Add(new MovieGenre() { Genre_Name = "Science-fiction", Create_At = DateTime.Now, Create_By = "Admin" });
 
                     context.Movie.Add(new Movie() { ID = Guid.NewGuid(), Title = "Les Gardiens de la Galaxie", TitleOriginal = "Guardians of the Galaxy", TheatricalRelease = new DateTime(2014,08,13), CommercialRelease = new DateTime(2014,12,30), Origin = "Etats-Unis", GenreID = 7, Create_At = DateTime.Now, Create_By = "Admin" });
                 }

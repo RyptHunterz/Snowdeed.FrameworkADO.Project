@@ -10,6 +10,7 @@
     <Folder Include="DbModels\" />
     <Folder Include="Dto\" />
     <Folder Include="Dto\Extensions\" />
+    <Folder Include="DbModels\Extensions\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Snowdeed.FrameworkADO.Core\Snowdeed.FrameworkADO.Core.csproj">

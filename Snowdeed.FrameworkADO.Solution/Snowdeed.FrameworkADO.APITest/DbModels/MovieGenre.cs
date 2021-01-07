@@ -2,24 +2,16 @@
 
 namespace Snowdeed.FrameworkADO.APITest.DbModels
 {
-    public class MovieGenre
+    using Snowdeed.FrameworkADO.APITest.DbModels.Extensions;
+    using Snowdeed.FrameworkADO.Core.Attributes;
+
+    public class MovieGenre : CRUDExtension
     {
+        [Identity]
         public int ID { get; set; }
 
+        [NotNull]
+        [MaxLenght(50)]
         public string Genre_Name { get; set; }
-
-
-
-        public DateTime Create_At { get; set; }
-
-        public string Create_By { get; set; }
-
-        public DateTime? Delete_At { get; set; }
-
-        public string Delete_By { get; set; }
-
-        public DateTime? Update_At { get; set; }
-
-        public string Update_By { get; set; }
     }
 }

@@ -2,34 +2,32 @@
 
 namespace Snowdeed.FrameworkADO.APITest.DbModels
 {
-    public class Movie
+    using Snowdeed.FrameworkADO.APITest.DbModels.Extensions;
+    using Snowdeed.FrameworkADO.Core.Attributes;
+
+    public class Movie : CRUDExtension
     {
+        [Identity]
         public Guid ID { get; set; }
 
+        [NotNull]
+        [MaxLenght(50)]
         public string Title { get; set; }
 
+        [NotNull]
+        [MaxLenght(50)]
         public string TitleOriginal { get; set; }
 
+        [NotNull]
         public DateTime TheatricalRelease { get; set; }
 
+        [NotNull]
         public DateTime CommercialRelease { get; set; }
 
+        [NotNull]
+        [MaxLenght(50)]
         public string Origin { get; set; }
 
         public int GenreID { get; set; }
-
-
-
-        public DateTime Create_At { get; set; }
-
-        public string Create_By { get; set; }
-
-        public DateTime? Delete_At { get; set; }
-
-        public string Delete_By { get; set; }
-
-        public DateTime? Update_At { get; set; }
-
-        public string Update_By { get; set; }
     }
 }
