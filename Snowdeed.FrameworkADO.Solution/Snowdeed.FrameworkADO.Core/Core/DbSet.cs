@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Reflection;
@@ -53,7 +54,7 @@ namespace Snowdeed.FrameworkADO.Core.Core
             }
         }
 
-        public int Add(T entity)
+        public bool Add(T entity)
         {
             using (SqlCommand command = _connection.CreateCommand())
             {
@@ -97,11 +98,11 @@ namespace Snowdeed.FrameworkADO.Core.Core
                 query += ");";
 
                 command.CommandText = query;
-                return command.ExecuteNonQuery();
+                return command.ExecuteNonQuery() != 0;
             }
         }
 
-        public int Udpate(T entity)
+        public bool Udpate(T entity)
         {
             using (SqlCommand command = _connection.CreateCommand())
             {
@@ -124,11 +125,11 @@ namespace Snowdeed.FrameworkADO.Core.Core
                 query += $" WHERE ID = '{propertyInfos.Where(x => x.Name.ToUpper() == "ID").FirstOrDefault().GetValue(entity)}'";
 
                 command.CommandText = query;
-                return command.ExecuteNonQuery();
+                return command.ExecuteNonQuery() != 0;
             }
         }
 
-        public int Delete(T entity)
+        public bool Delete(T entity)
         {
             throw new NotImplementedException();
         }

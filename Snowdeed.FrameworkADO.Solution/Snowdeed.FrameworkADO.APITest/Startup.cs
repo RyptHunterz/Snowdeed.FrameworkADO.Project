@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -6,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace Snowdeed.FrameworkADO.APITest
 {
-    using System;
     using Snowdeed.FrameworkADO.APITest.Core;
     using Snowdeed.FrameworkADO.APITest.DbModels;
 
@@ -69,6 +69,8 @@ namespace Snowdeed.FrameworkADO.APITest
             {
                 context.CreateDatabase();
                 context.CreateTable();
+
+                context.Database.ExecuteStoredProcedure("", new { });
 
                 if (env.IsDevelopment())
                 {

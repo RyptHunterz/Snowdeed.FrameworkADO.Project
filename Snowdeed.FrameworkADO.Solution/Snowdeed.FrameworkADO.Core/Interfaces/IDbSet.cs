@@ -1,19 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Snowdeed.FrameworkADO.Core.Interfaces
 {
     public interface IDbSet<T> where T : class
     {
-        public IEnumerable<T> GetAll();
+        IEnumerable<T> GetAll();
 
         //public T GetById(object Id);
 
-        public int Add(T entity);
+        bool Add(T entity);
 
-        public int Udpate(T entity);
+        bool Udpate(T entity);
 
-        public int Delete(T entity);
-
+        bool Delete(T entity);
     }
 }

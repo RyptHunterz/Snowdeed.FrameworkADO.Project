@@ -15,6 +15,8 @@ namespace Snowdeed.FrameworkADO.Core.Core
         protected SqlConnection _connection;
         protected string _database;
 
+        public DbDatabase Database { get; set; }
+
         #region -- Constructor(s) --
         public DbContext(string connectionString)
         {
