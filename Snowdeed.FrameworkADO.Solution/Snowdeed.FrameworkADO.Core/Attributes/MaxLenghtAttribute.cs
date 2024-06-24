@@ -1,10 +1,10 @@
 ﻿using System;
-
 namespace Snowdeed.FrameworkADO.Core.Attributes
 {
+    [AttributeUsage(AttributeTargets.Property)]
     public class MaxLenghtAttribute : Attribute
-    {
-        private int maxLenght;
+	{
+        private readonly int maxLenght;
 
         public MaxLenghtAttribute(int MaxLenght)
         {

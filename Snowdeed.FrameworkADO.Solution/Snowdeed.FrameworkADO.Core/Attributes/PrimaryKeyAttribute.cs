@@ -2,7 +2,7 @@
 namespace Snowdeed.FrameworkADO.Core.Attributes
 {
     [AttributeUsage(AttributeTargets.Property)]
-    public class NotNullAttribute : Attribute
+    public class PrimaryKeyAttribute : Attribute
 	{
 	}
 }
