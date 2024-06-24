@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.808.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snowdeed.FrameworkADO.Core", "Snowdeed.FrameworkADO.Core\Snowdeed.FrameworkADO.Core.csproj", "{9B773CD0-03CE-46E9-9156-05BD79467FFE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Snowdeed.FrameworkADO.TestAPI", "Snowdeed.FrameworkADO.TestAPI\Snowdeed.FrameworkADO.TestAPI.csproj", "{715790DE-9AFD-4AF9-B1FA-9036F03252FB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snowdeed.FrameworkADO.APITest", "Snowdeed.FrameworkADO.APITest\Snowdeed.FrameworkADO.APITest.csproj", "{75F0874F-4805-48AD-9772-3EFB00840CCD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Snowdeed.FrameworkADO.Core", "Snowdeed.FrameworkADO.Core\Snowdeed.FrameworkADO.Core.csproj", "{7737A37F-D2E8-4D36-A51D-BA1688CEFC9C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,19 +13,34 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9B773CD0-03CE-46E9-9156-05BD79467FFE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9B773CD0-03CE-46E9-9156-05BD79467FFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9B773CD0-03CE-46E9-9156-05BD79467FFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9B773CD0-03CE-46E9-9156-05BD79467FFE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{75F0874F-4805-48AD-9772-3EFB00840CCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{75F0874F-4805-48AD-9772-3EFB00840CCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{75F0874F-4805-48AD-9772-3EFB00840CCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{75F0874F-4805-48AD-9772-3EFB00840CCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{715790DE-9AFD-4AF9-B1FA-9036F03252FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{715790DE-9AFD-4AF9-B1FA-9036F03252FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{715790DE-9AFD-4AF9-B1FA-9036F03252FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{715790DE-9AFD-4AF9-B1FA-9036F03252FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7737A37F-D2E8-4D36-A51D-BA1688CEFC9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7737A37F-D2E8-4D36-A51D-BA1688CEFC9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7737A37F-D2E8-4D36-A51D-BA1688CEFC9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7737A37F-D2E8-4D36-A51D-BA1688CEFC9C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {8A84AE71-EDF2-43D7-A376-26759CAAB516}
+		SolutionGuid = {EC5A3365-5D9E-48BD-92C7-7727214C8F76}
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.DotNetNamingPolicy = $1
+		$1.DirectoryNamespaceAssociation = PrefixedHierarchical
+		$0.TextStylePolicy = $4
+		$2.inheritsSet = null
+		$2.scope = text/x-csharp
+		$0.CSharpFormattingPolicy = $3
+		$3.scope = text/x-csharp
+		$4.FileWidth = 80
+		$4.TabsToSpaces = True
+		$4.scope = text/plain
+		$0.StandardHeader = $5
+		version = 1.1.1
 	EndGlobalSection
 EndGlobal
