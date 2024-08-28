@@ -39,25 +39,33 @@ public class DbContext : IDbContext
     }
     #endregion
 
+    #region -- Private Method(s)
+    private static void Log(string? log, bool error)
+    {
+        Console.ForegroundColor = error ? ConsoleColor.Red : ConsoleColor.White;
+        Console.WriteLine(log);
+    }
+    #endregion
+
     #region -- Public Method(s) --
     public async Task<int> CreateDatabaseAsync()
     {
-        string query = $"IF NOT EXISTS(SELECT * FROM sys.databases WHERE [name] = '{databaseName}')\nBEGIN\nCREATE DATABASE [{databaseName}]\nEND";
+        StringBuilder query = new($"IF NOT EXISTS(SELECT * FROM sys.databases WHERE [name] = '{databaseName}')\nBEGIN\nCREATE DATABASE [{databaseName}]\nEND");
 
-        Console.WriteLine(query);
+        Log($"{query}", false);
 
-        await using var command = new SqlCommand(query, connection);
+        await using var command = new SqlCommand($"{query}", connection);
         
         return await command.ExecuteNonQueryAsync();
     }
 
     public async Task<int> DropDatabaseAsync()
     {
-        string query = $"USE [master];\nIF EXISTS(SELECT * FROM sys.databases WHERE [name] = '{databaseName}')\nBEGIN\nALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;\nDROP DATABASE [{databaseName}];\nEND";
+        StringBuilder query = new($"USE [master];\nIF EXISTS(SELECT * FROM sys.databases WHERE [name] = '{databaseName}')\nBEGIN\nALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;\nDROP DATABASE [{databaseName}];\nEND");
 
-        Console.WriteLine(query);
+        Log($"{query}", false);
 
-        await using var command = new SqlCommand(query, connection);
+        await using var command = new SqlCommand($"{query}", connection);
         return await command.ExecuteNonQueryAsync();
     }
 
@@ -69,24 +77,24 @@ public class DbContext : IDbContext
         {
             foreach (Type type in property.PropertyType.GetGenericArguments())
             {
-                query.Append($"IF NOT EXISTS (SELECT * FROM sys.tables WHERE [name] = '{type.Name}')\nBEGIN CREATE TABLE [{type.Name}]\n(\n");
+                query.Append($"\nIF NOT EXISTS (SELECT * FROM sys.tables WHERE [name] = '{type.Name}')\nBEGIN CREATE TABLE [{type.Name}]\n(\n");
 
                 foreach (PropertyInfo propertyInfo in type.GetProperties())
                 {
-                    query.Append(propertyInfo.ConvertToSQLProperty());
+                    query.Append(propertyInfo.ConvertToSQL());
 
                     if (type.GetProperties().Last() != propertyInfo)
                     {
                         query.Append(",\n");
                     }
                 }
-                query.Append("\n);\nEND");
+                query.Append("\n);\nEND\n");
             }
         }
 
-        Console.WriteLine(query.ToString());
+        Log($"{query}", false);
 
-        await using var command = new SqlCommand(query.ToString(), connection);
+        await using var command = new SqlCommand($"{query}", connection);
         return await command.ExecuteNonQueryAsync();
     }
     #endregion
