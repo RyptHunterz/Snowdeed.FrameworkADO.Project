@@ -11,6 +11,8 @@
 
 `Snowdeed.FrameworkADO.Project` is a .NET project that leverages the `Snowdeed.FrameworkADO.Core` library to simplify database operations using ADO.NET. This project provides a structure and examples to help you effectively integrate and use the library in your applications.
 
+`Snowdeed.FrameworkADO.Project` est un projet .NET qui utilise la bibliothèque `Snowdeed.FrameworkADO.Core` pour simplifier les opérations de base de données avec ADO.NET. Ce projet fournit une structure et des exemples pour intégrer et utiliser efficacement la bibliothèque dans vos applications.
+
 ## Installation
 
 ### Prerequisites / Prérequis
