@@ -7,6 +7,6 @@ Table of Contents / Table des matières
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 
-#Introduction
+# Introduction
 
-#Installation
+# Installation
