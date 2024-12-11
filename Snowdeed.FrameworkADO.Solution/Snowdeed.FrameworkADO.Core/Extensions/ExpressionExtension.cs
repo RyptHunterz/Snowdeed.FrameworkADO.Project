@@ -33,7 +33,7 @@ public static class ExpressionExtension
 
                 var memberExpression = (MemberExpression)expression;
 
-                if (memberExpression.Expression is ConstantExpression)
+                if (memberExpression.Expression is ConstantExpression || memberExpression.Expression is MemberExpression)
                 {
                     var value = GetValueFromExpression(memberExpression);
                     return FormatValue(value);
@@ -46,9 +46,8 @@ public static class ExpressionExtension
                 return FormatValue(constantExpression.Value);
 
             default:
-                break;
+                throw new NotSupportedException($"Type d'expression {expression.GetType().Name} non supporté");
         }
-        throw new NotSupportedException($"Type d'expression {expression.GetType().Name} non supporté");
     }
 
     private static object? GetValueFromExpression(MemberExpression memberExpression)
@@ -63,12 +62,45 @@ public static class ExpressionExtension
             }
         }
 
+        if (memberExpression.Expression is MemberExpression parentMember)
+        {
+            var parentValue = GetValueFromExpression(parentMember);
+            if (parentValue != null)
+            {
+                var propertyInfo = memberExpression.Member as PropertyInfo;
+                var fieldInfo = memberExpression.Member as FieldInfo;
+
+                if (propertyInfo != null)
+                {
+                    return propertyInfo.GetValue(parentValue);
+                }
+
+                if (fieldInfo != null)
+                {
+                    return fieldInfo.GetValue(parentValue);
+                }
+            }
+        }
+
         throw new InvalidOperationException("Impossible d'extraire la valeur de l'expression membre.");
     }
 
     private static string FormatValue(object? value)
     {
-        return value is string ? $"'{value}'" : $"{value}";
+        //return value is string ? $"'{value}'" : ;
+
+        return value switch
+        {
+            null => "NULL",
+            string str => $"'{str}'",
+            DateTime dateTime => $"'{dateTime:yyyy-MM-dd}'",
+            DateOnly dateOnly => $"'{dateOnly:yyyy-MM-dd}'",
+            TimeOnly timeOnly => $"'{timeOnly:HH:mm:ss}'",
+            double dbl => FormatDouble(dbl),
+            decimal dec => FormatDecimal(dec),
+            Guid guid => $"'{guid}'",
+            _ => $"{value}",
+        };
     }
 
     private static string GetSqlOperator(ExpressionType expressionType)
@@ -83,5 +115,15 @@ public static class ExpressionExtension
             ExpressionType.LessThan => "<",
             _ => throw new NotSupportedException($"Opérateur {expressionType} non supporté"),
         };
+    }
+
+    private static string FormatDouble(double value)
+    {
+        return $"{value}".Replace(',', '.');
+    }
+
+    private static string FormatDecimal(decimal value)
+    {
+        return $"{value}".Replace(',', '.');
     }
 }

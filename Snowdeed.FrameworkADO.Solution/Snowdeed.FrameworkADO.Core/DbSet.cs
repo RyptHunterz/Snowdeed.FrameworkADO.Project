@@ -1,8 +1,10 @@
 ﻿using Microsoft.Data.SqlClient;
 using Snowdeed.FrameworkADO.Core.Attributes;
 using Snowdeed.FrameworkADO.Core.Extensions;
+using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 
 namespace Snowdeed.FrameworkADO.Core;
 
@@ -18,8 +20,6 @@ public interface IDbSet<T> where T : class
 
 public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> where T : class
 {
-    private string? query = $"SET DATEFORMAT dmy; USE [{database}];";
-
     #region -- Private Method(s)
     private static void Log(string? log, bool error)
     {
@@ -27,89 +27,51 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
         Console.WriteLine(log);
     }
     private static PropertyInfo GetPrimaryProperty => typeof(T).GetProperties().Single(x => Attribute.IsDefined(x, typeof(PrimaryKeyAttribute)));
-    private async Task<IEnumerable<T>> GetAll(string? whereQuery, CancellationToken cancellationToken)
+    #endregion
+
+    #region -- Public Method(s) --
+    public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken)
     {
+        if (connection == null || connection.State != ConnectionState.Open)
+            throw new InvalidOperationException("Database connection is not initialized or not open.");
+
+        string query = $"SET DATEFORMAT dmy; USE [{database}]; SELECT * FROM {typeof(T).Name};";
+        Log(query, false);
+
         try
         {
-            query += $"SELECT * FROM {typeof(T).Name} {whereQuery};";
-
-            Log(query, false);
-
             await using var command = new SqlCommand(query, connection);
-            cancellationToken.Register(command.Cancel);
+            cancellationToken.Register(() => command.Cancel());
+
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-            var result = new List<T>();
-
-            if (reader.HasRows)
-            {
-                while (await reader.ReadAsync(cancellationToken))
-                {
-                    var item = Activator.CreateInstance<T>();
-
-                    foreach (PropertyInfo propertyInfo in typeof(T).GetProperties().Where(x => x.CanWrite).ToList())
-                    {
-                        object? value = reader[propertyInfo.Name] != DBNull.Value ? reader[propertyInfo.Name] : null;
-
-                        if (propertyInfo.PropertyType.IsEnum)
-                        {
-                            propertyInfo.SetValue(item, Enum.ToObject(propertyInfo.PropertyType, value ?? new NullReferenceException("Enum is null !")));
-                        }
-                        else
-                        {
-                            propertyInfo.SetValue(item, value);
-                        }
-                    }
-                    result.Add(item);
-                }
-            }
-            return result;
+            return await MapReaderToEntities(reader, cancellationToken);
         }
         catch (SqlException ex)
         {
             throw new Exception($"Failed to execute query : {query}", ex);
         }
     }
-    #endregion
-
-    #region -- Public Method(s) --
-    public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken)
-    {
-        return await GetAll(null, cancellationToken);
-    }
 
     public async Task<T?> GetAsync(object id, CancellationToken cancellationToken)
     {
+        if (connection == null || connection.State != ConnectionState.Open)
+            throw new InvalidOperationException("Database connection is not initialized or not open.");
+
+        string query = $"SET DATEFORMAT dmy; USE [{database}]; SELECT * FROM {typeof(T).Name} WHERE {GetPrimaryProperty.Name} = @id;";
+        Log(query, false);
+
         try
         {
-            query = $"SELECT * FROM {typeof(T).Name} WHERE {GetPrimaryProperty.Name} = '{id}';";
-
             await using var command = new SqlCommand(query, connection);
-            cancellationToken.Register(command.Cancel);
+            command.Parameters.AddWithValue("@id", id);
+            cancellationToken.Register(() => command.Cancel());
+
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             if (!reader.HasRows) return default;
 
             await reader.ReadAsync(cancellationToken);
-
-            Log(query, false);
-
-            var result = Activator.CreateInstance<T>();
-
-            foreach (PropertyInfo propertyInfo in typeof(T).GetProperties().Where(x => x.CanWrite).ToList())
-            {
-                object? value = reader[propertyInfo.Name] != DBNull.Value ? reader[propertyInfo.Name] : null;
-                if (propertyInfo.PropertyType.IsEnum)
-                {
-                    propertyInfo.SetValue(result, Enum.ToObject(propertyInfo.PropertyType, value ?? new NullReferenceException("Enum is null !")));
-                }
-                else
-                {
-                    propertyInfo.SetValue(result, value);
-                }
-            }
-
-            return result;
+            return MapReaderToEntity(reader);
         }
         catch (SqlException ex)
         {
@@ -120,16 +82,40 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
 
     public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken)
     {
-        var whereQuery = $"WHERE {expression.ConvertToSql()}";
-        return await GetAll(whereQuery, cancellationToken);
+        ArgumentNullException.ThrowIfNull(expression);
+
+        if (connection == null || connection.State != ConnectionState.Open)
+            throw new InvalidOperationException("Database connection is not initialized or not open.");
+
+        string whereClause = expression.ConvertToSql();
+        string query = $"SET DATEFORMAT dmy; USE [{database}]; SELECT * FROM {typeof(T).Name} WHERE {whereClause};";
+        Log(query, false);
+
+        try
+        {
+            await using var command = new SqlCommand(query, connection);
+            cancellationToken.Register(() => command.Cancel());
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            return await MapReaderToEntities(reader, cancellationToken);
+        }
+        catch (SqlException ex)
+        {
+            Log($"SQL Exception occurred: {ex.Message}", true);
+            throw new Exception($"Failed to execute query: {query}. See inner exception for details.", ex);
+        }
     }
 
     public async Task<T> AddAsync(T entity, CancellationToken cancellationToken)
     {
+        if (connection == null || connection.State != ConnectionState.Open)
+            throw new InvalidOperationException("Database connection is not initialized or not open.");
+
+        var queryBuilder = new StringBuilder($"SET DATEFORMAT dmy; USE [{database}]; INSERT INTO [{typeof(T).Name}] (");
+        var parameters = new List<SqlParameter>();
+
         try
         {
-            query += $"INSERT INTO [{typeof(T).Name}] (";
-
             IEnumerable<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
 
             foreach (PropertyInfo propertyInfo in propertyInfos)
@@ -137,111 +123,104 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
                 if (!Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute)) &&
                     !Attribute.IsDefined(propertyInfo, typeof(PrimaryKeyAttribute)))
                 {
-                    query += $"{propertyInfo.Name}";
-
-                    if (!propertyInfo.Equals(propertyInfos.Last()))
-                    {
-                        query += ",";
-                    }
+                    queryBuilder.Append($"{propertyInfo.Name},");
+                    var paramName = "@" + propertyInfo.Name;
+                    parameters.Add(new SqlParameter(paramName, propertyInfo.GetValue(entity) ?? DBNull.Value));
                 }
             }
 
-            query += $") OUTPUT INSERTED.{GetPrimaryProperty.Name} VALUES (";
+            queryBuilder.Length--;
+            queryBuilder.Append($") OUTPUT INSERTED.{GetPrimaryProperty.Name} VALUES (");
 
-            IEnumerable<PropertyInfo> entityPropertyInfos = entity.GetType().GetProperties().Where(x => x.GetValue(entity, null) != null).ToList();
-
-            foreach (PropertyInfo propertyInfo in entityPropertyInfos)
+            foreach (var propertyInfo in propertyInfos)
             {
                 if (!Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute)) &&
                     !Attribute.IsDefined(propertyInfo, typeof(PrimaryKeyAttribute)))
                 {
-                    if (propertyInfo.PropertyType.IsEnum)
-                    {
-                        query += propertyInfo.GetEnumValue(entity);
-                    }
-                    else if (propertyInfo.PropertyType.IsDouble())
-                    {
-                        query += propertyInfo.GetDoubleValue(entity);
-                    }
-                    else
-                    {
-                        query += $"'{propertyInfo.GetValue(entity)}'";
-                    }
-
-                    if (!propertyInfo.Equals(entityPropertyInfos.Last()))
-                    {
-                        query += ",";
-                    }
+                    queryBuilder.Append($"@{propertyInfo.Name},");
                 }
             }
 
-            query += ");";
+            queryBuilder.Length--;
+            queryBuilder.Append(");");
 
-            await using var command = new SqlCommand(query, connection);
+            var command = new SqlCommand(queryBuilder.ToString(), connection);
+            command.Parameters.AddRange(parameters.ToArray());
+
             cancellationToken.Register(command.Cancel);
             GetPrimaryProperty.SetValue(entity, await command.ExecuteScalarAsync(cancellationToken));
 
-            Log(query, false);
-
+            Log(queryBuilder.ToString(), false);
             return entity;
         }
         catch (SqlException ex)
         {
-            Log(query, true);
-
-            throw new Exception($"Failed to execute query : {query}", ex);
+            Log(queryBuilder.ToString(), true);
+            throw new Exception($"Failed to execute query : {queryBuilder.ToString()}", ex);
         }
     }
 
-    public async Task<int> UdpateAsync(object objectValue, T entity, CancellationToken cancellationToken)
+    public async Task<int> UdpateAsync(object primaryPropertyValue, T entity, CancellationToken cancellationToken)
     {
+        if (connection == null || connection.State != ConnectionState.Open)
+            throw new InvalidOperationException("Database connection is not initialized or not open.");
+
+        var queryBuilder = new StringBuilder($"SET DATEFORMAT dmy; USE [{database}]; UPDATE {typeof(T).Name} SET ");
+        var parameters = new List<SqlParameter>();
+
         try
         {
-            query += $"UPDATE {typeof(T).Name} SET ";
+            List<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
 
-            IEnumerable<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
-
-            foreach (PropertyInfo propertyInfo in propertyInfos)
+            for (int i = 0; i < propertyInfos.Count; i++)
             {
+                var propertyInfo = propertyInfos[i];
+
                 if (!Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute)) &&
-                   !Attribute.IsDefined(propertyInfo, typeof(PrimaryKeyAttribute)))
+                    !Attribute.IsDefined(propertyInfo, typeof(PrimaryKeyAttribute)))
                 {
-                    if (propertyInfo.PropertyType.IsEnum)
+                    var parameterName = $"@param{i}";
+                    var value = propertyInfo.GetValue(entity);
+
+                    if (propertyInfo.PropertyType.IsEnum && value != null)
                     {
-                        query += $"{propertyInfo.Name} = '{propertyInfo.GetEnumValue(entity)}'";
-                    }
-                    else
-                    {
-                        query += $"{propertyInfo.Name} = '{propertyInfo.GetValue(entity)}'";
+                        value = (int)value;
                     }
 
-                    if (!propertyInfo.Equals(propertyInfos.Last()))
+                    queryBuilder.Append($"{propertyInfo.Name} = {parameterName}");
+                    if (i < propertyInfos.Count - 1)
                     {
-                        query += ",";
+                        queryBuilder.Append(", ");
                     }
+
+                    parameters.Add(new SqlParameter(parameterName, value ?? DBNull.Value));
                 }
             }
 
-            query += $" WHERE {GetPrimaryProperty.Name} = '{objectValue}'";
+            queryBuilder.Append($" WHERE {GetPrimaryProperty.Name} = @primaryPropertyValue");
+            parameters.Add(new SqlParameter("@primaryPropertyValue", primaryPropertyValue));
 
-            Log(query, false);
+            Log(queryBuilder.ToString(), false);
 
-            await using var command = new SqlCommand(query, connection);
+            await using var command = new SqlCommand(queryBuilder.ToString(), connection);
+            command.Parameters.AddRange(parameters.ToArray());
             cancellationToken.Register(command.Cancel);
+
             return await command.ExecuteNonQueryAsync(cancellationToken);
         }
         catch (SqlException ex)
         {
-            Log(query, true);
-
-            throw new Exception($"Failed to execute query : {query}", ex);
+            Log(queryBuilder.ToString(), true);
+            throw new Exception($"Failed to execute query: {queryBuilder}", ex);
         }
     }
 
     public async Task<int> UdpateAsync(T entity, CancellationToken cancellationToken)
     {
+        string query = $"SET DATEFORMAT dmy; USE [{database}];";
         try
         {
+            
             query += $"UPDATE {typeof(T).Name} SET ";
 
             IEnumerable<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
@@ -285,8 +264,10 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
 
     public async Task<int> DeleteAsync(object id, CancellationToken cancellationToken)
     {
+        string query = $"SET DATEFORMAT dmy; USE [{database}];";
         try
         {
+            
             query += $"DELETE FROM {typeof(T).Name} WHERE {GetPrimaryProperty.Name} = '{id}'";
 
             Log(query, false);
@@ -304,5 +285,62 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
     }
     #endregion
 
+    private async Task<List<T>> MapReaderToEntities(SqlDataReader reader, CancellationToken cancellationToken)
+    {
+        var result = new List<T>();
 
+        if (!reader.HasRows) return result;
+
+        var properties = typeof(T).GetProperties().Where(p => p.CanWrite).ToList();
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var item = Activator.CreateInstance<T>();
+            MapProperties(reader, properties, item);
+            result.Add(item);
+        }
+
+        return result;
+    }
+
+    private T? MapReaderToEntity(SqlDataReader reader)
+    {
+        var properties = typeof(T).GetProperties().Where(p => p.CanWrite).ToList();
+        var item = Activator.CreateInstance<T>();
+        MapProperties(reader, properties, item);
+        return item;
+    }
+
+    private void MapProperties(SqlDataReader reader, List<PropertyInfo> properties, T item)
+    {
+        foreach (var property in properties)
+        {
+            var columnValue = reader[property.Name] != DBNull.Value ? reader[property.Name] : null;
+
+            if (property.PropertyType.IsEnum)
+            {
+                if (columnValue == null)
+                    throw new NullReferenceException($"Enum property '{property.Name}' cannot be null.");
+
+                property.SetValue(item, Enum.ToObject(property.PropertyType, columnValue));
+            }
+            else if (property.PropertyType == typeof(DateOnly?) || property.PropertyType == typeof(DateOnly))
+            {
+                property.SetValue(item, columnValue is DateTime dt ? DateOnly.FromDateTime(dt) : null);
+            }
+            else if (property.PropertyType == typeof(TimeOnly?) || property.PropertyType == typeof(TimeOnly))
+            {
+                if (columnValue is DateTime dt)
+                    property.SetValue(item, TimeOnly.FromDateTime(dt));
+                else if (columnValue is TimeSpan ts)
+                    property.SetValue(item, TimeOnly.FromTimeSpan(ts));
+                else
+                    property.SetValue(item, null);
+            }
+            else
+            {
+                property.SetValue(item, columnValue);
+            }
+        }
+    }
 }
