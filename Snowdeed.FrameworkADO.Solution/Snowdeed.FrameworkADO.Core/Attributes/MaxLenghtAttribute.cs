@@ -6,7 +6,7 @@ namespace Snowdeed.FrameworkADO.Core.Attributes
 	{
         private readonly int maxLenght;
 
-        public MaxLenghtAttribute(int MaxLenght)
+        public MaxLenghtAttribute(int MaxLenght = 0)
         {
             this.maxLenght = MaxLenght;
         }

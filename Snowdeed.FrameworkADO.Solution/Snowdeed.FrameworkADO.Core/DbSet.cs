@@ -145,7 +145,7 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
             queryBuilder.Append(");");
 
             var command = new SqlCommand(queryBuilder.ToString(), connection);
-            command.Parameters.AddRange(parameters.ToArray());
+            command.Parameters.AddRange([.. parameters]);
 
             cancellationToken.Register(command.Cancel);
             GetPrimaryProperty.SetValue(entity, await command.ExecuteScalarAsync(cancellationToken));
@@ -156,7 +156,7 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
         catch (SqlException ex)
         {
             Log(queryBuilder.ToString(), true);
-            throw new Exception($"Failed to execute query : {queryBuilder.ToString()}", ex);
+            throw new Exception($"Failed to execute query : {queryBuilder.ToString()} --> {ex.Message}");
         }
     }
 
@@ -165,64 +165,11 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
         if (connection == null || connection.State != ConnectionState.Open)
             throw new InvalidOperationException("Database connection is not initialized or not open.");
 
-        var queryBuilder = new StringBuilder($"SET DATEFORMAT dmy; USE [{database}]; UPDATE {typeof(T).Name} SET ");
+        var queryBuilder = new StringBuilder($"SET DATEFORMAT dmy; USE [{database}]; UPDATE [{typeof(T).Name}] SET ");
         var parameters = new List<SqlParameter>();
 
         try
         {
-            List<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
-
-            for (int i = 0; i < propertyInfos.Count; i++)
-            {
-                var propertyInfo = propertyInfos[i];
-
-                if (!Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute)) &&
-                    !Attribute.IsDefined(propertyInfo, typeof(PrimaryKeyAttribute)))
-                {
-                    var parameterName = $"@param{i}";
-                    var value = propertyInfo.GetValue(entity);
-
-                    if (propertyInfo.PropertyType.IsEnum && value != null)
-                    {
-                        value = (int)value;
-                    }
-
-                    queryBuilder.Append($"{propertyInfo.Name} = {parameterName}");
-                    if (i < propertyInfos.Count - 1)
-                    {
-                        queryBuilder.Append(", ");
-                    }
-
-                    parameters.Add(new SqlParameter(parameterName, value ?? DBNull.Value));
-                }
-            }
-
-            queryBuilder.Append($" WHERE {GetPrimaryProperty.Name} = @primaryPropertyValue");
-            parameters.Add(new SqlParameter("@primaryPropertyValue", primaryPropertyValue));
-
-            Log(queryBuilder.ToString(), false);
-
-            await using var command = new SqlCommand(queryBuilder.ToString(), connection);
-            command.Parameters.AddRange(parameters.ToArray());
-            cancellationToken.Register(command.Cancel);
-
-            return await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-        catch (SqlException ex)
-        {
-            Log(queryBuilder.ToString(), true);
-            throw new Exception($"Failed to execute query: {queryBuilder}", ex);
-        }
-    }
-
-    public async Task<int> UdpateAsync(T entity, CancellationToken cancellationToken)
-    {
-        string query = $"SET DATEFORMAT dmy; USE [{database}];";
-        try
-        {
-            
-            query += $"UPDATE {typeof(T).Name} SET ";
-
             IEnumerable<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
 
             foreach (PropertyInfo propertyInfo in propertyInfos)
@@ -232,33 +179,103 @@ public class DbSet<T>(SqlConnection connection, string database) : IDbSet<T> whe
                 {
                     if (propertyInfo.PropertyType.IsEnum)
                     {
-                        query += $"{propertyInfo.Name} = '{propertyInfo.GetEnumValue(entity)}'";
+                        queryBuilder.Append($"{propertyInfo.Name} = @{propertyInfo.Name}");
+                        parameters.Add(new SqlParameter($"@{propertyInfo.Name}", propertyInfo.GetEnumValue(entity)));
                     }
                     else
                     {
-                        query += $"{propertyInfo.Name} = '{propertyInfo.GetValue(entity)}'";
+                        queryBuilder.Append($"{propertyInfo.Name} = @{propertyInfo.Name}");
+                        parameters.Add(new SqlParameter($"@{propertyInfo.Name}", propertyInfo.GetValue(entity)));
                     }
 
                     if (!propertyInfo.Equals(propertyInfos.Last()))
                     {
-                        query += ",";
+                        queryBuilder.Append(", ");
                     }
                 }
             }
 
-            query += $" WHERE {GetPrimaryProperty.Name} = '{GetPrimaryProperty.GetValue(entity)}'";
+            queryBuilder.Append($" WHERE {GetPrimaryProperty.Name} = @primaryPropertyValue");
+            parameters.Add(new SqlParameter("@primaryPropertyValue", primaryPropertyValue));
 
-            Log(query, false);
+            Log(queryBuilder.ToString(), false);
 
-            await using var command = new SqlCommand(query, connection);
+            foreach (var item in parameters)
+            {
+                Log($"{item.ParameterName.ToString()} : {item.Value.ToString()}", false);
+            }
+
+            await using var command = new SqlCommand(queryBuilder.ToString(), connection);
+            command.Parameters.AddRange([.. parameters]);
+
             cancellationToken.Register(command.Cancel);
+
             return await command.ExecuteNonQueryAsync(cancellationToken);
         }
         catch (SqlException ex)
         {
-            Log(query, true);
+            Log(queryBuilder.ToString(), true);
+            throw new Exception($"Failed to execute query: {queryBuilder} --> {ex.Message}");
+        }
+    }
 
-            throw new Exception($"Failed to execute query : {query}", ex);
+    public async Task<int> UdpateAsync(T entity, CancellationToken cancellationToken)
+    {
+        if (connection == null || connection.State != ConnectionState.Open)
+            throw new InvalidOperationException("Database connection is not initialized or not open.");
+
+        var queryBuilder = new StringBuilder($"SET DATEFORMAT dmy; USE [{database}]; UPDATE [{typeof(T).Name}] SET ");
+        var parameters = new List<SqlParameter>();
+
+        try
+        {
+            IEnumerable<PropertyInfo> propertyInfos = typeof(T).GetProperties().Where(x => x.CanWrite && x.GetValue(entity, null) != null).ToList();
+            
+            foreach (PropertyInfo propertyInfo in propertyInfos)
+            {
+                if (!Attribute.IsDefined(propertyInfo, typeof(IdentityAttribute)) &&
+                    !Attribute.IsDefined(propertyInfo, typeof(PrimaryKeyAttribute)))
+                {
+                    if (propertyInfo.PropertyType.IsEnum)
+                    {
+                        queryBuilder.Append($"{propertyInfo.Name} = @{propertyInfo.Name}");
+                        parameters.Add(new SqlParameter($"@{propertyInfo.Name}", propertyInfo.GetEnumValue(entity)));
+                    }
+                    else
+                    {
+                        queryBuilder.Append($"{propertyInfo.Name} = @{propertyInfo.Name}");
+                        parameters.Add(new SqlParameter($"@{propertyInfo.Name}", propertyInfo.GetValue(entity)));
+                    }
+
+                    if (!propertyInfo.Equals(propertyInfos.Last()))
+                    {
+                        queryBuilder.Append(", ");
+                    }
+                }
+            }
+
+            queryBuilder.Append($" WHERE {GetPrimaryProperty.Name} = @primaryPropertyValue");
+            parameters.Add(new SqlParameter("@primaryPropertyValue", GetPrimaryProperty.GetValue(entity)));
+
+            Log(queryBuilder.ToString(), false);
+            
+            foreach(var item in parameters)
+            {
+                Log($"{item.ParameterName.ToString()} : {item.Value.ToString()}", false);
+            }
+
+            await using var command = new SqlCommand(queryBuilder.ToString(), connection);
+            command.Parameters.AddRange([.. parameters]);
+
+            cancellationToken.Register(command.Cancel);
+
+            return await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (SqlException ex)
+        {
+            Log(queryBuilder.ToString(), true);
+
+            throw new Exception($"Failed to execute query : {queryBuilder.ToString()} --> {ex.Message}");
         }
     }
 
